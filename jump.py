@@ -5,7 +5,7 @@ SSH Management System
 Automates SSH connections to VPS and Dedicated servers from desktop
 
 Author:  Bleakbriar
-Last modified 07/11/2019
+Last modified 11/13/2019
 
 
 '''
@@ -19,14 +19,14 @@ from re import (search)
 
 #=== List of dedicated server prefixes ============================
 dedicatedPrefixes=["ded", "advanced", "elite", "cc"]
-sharedPrefixes=["biz", "ecbiz", "res", "ecres", "wp", "ld"]
+sharedPrefixes=["biz", "ecbiz", "res", "ecres", "wp", "ld", "ecld", "ngx", "ecngx", "hub", "ehub", "whub"]
 #=== User credentials =============================================
 # Jumpstation
-jsUser = ""     
-jsIP = "" 
+jsUser = " "     
+jsIP = " " 
 # cpJump
-authUser = ""
-authPW = ""
+authUser = " "
+authPW = " "
 #=== Primary Functions ===============================================================
 
 requests.packages.urllib3.disable_warnings()
@@ -57,9 +57,8 @@ def getNode(server):
         print("[!] Unable to locate Node for " + server)
         return ""
 
-
 def vpsJump(server, flag):
-    print("\t[+] Connecting through JumpStation...\n\n")
+    print("\t[CONNECTING] Routing via JumpStation...\n\n")
     jsCommand = "vpsfind " + server[3:] + " " + flag
     os.system('ssh -t ' + jsUser + '@' + jsIP + ' "' + jsCommand + '"')
 
@@ -72,8 +71,12 @@ def vpsDirectJump(server, flag):
         nodeCommand = "vzctl enter " + vpsNum
     print("\t[LOCATING NODE]")
     vNode = getNode(server)
+    print("\t[NODE LOCATED] " + vNode)
     vNodeAddress = jsUser +"@" + vNode + ".inmotionhosting.com"
-    print("\t[CONNECTING]")
+    if(flag == "n"):
+        print("\t[CONNECTING] " + vNode )
+    else:
+        print("\t[CONNECTING] " + server)
     os.system(sshCommand + " " + vNodeAddress + " " + nodeCommand)
 
 def dediJump(server, port):
@@ -88,15 +91,21 @@ def dediKeylessJump(server, port):
     os.system("ssh -o StrictHostKeyChecking=no -p " + port + " root@" + server + ".inmotionhosting.com")
 
 def sharedJump(server, js):
-    print("\t[+] Connecting...\n\n")
+    # Check if it's a reseller server, because they don't resolve by hostname sometimes, and just
+    # the jumpstation route
+    if(server.lower().startswith("res") or server.lower().startswith("ecres")):
+        js = True
     if(js):
+        print("\t[CONNECTING] Routing via Jumpstation")
         jsCommand = "ssh -q -o StrictHostKeyChecking=no " + server
         os.system('ssh -t ' + jsUser + '@' + jsIP + ' "' + jsCommand + '"')
     else:
+        print("\t[CONNECTING] " + server)
         os.system('ssh -q -o StrictHostKeyChecking=no ' + jsUser + "@" + server + ".inmotionhosting.com")
 
 
 #=== Secondary Functions =====================================================================================================
+
 def bounceHandler(args):
     if(args.bounce):
         print("[TEST] Pinging: " + args.server)
@@ -165,15 +174,15 @@ def main(args):
     SharedSuccess = sharedHandler(args)
     if(not VPSSuccess and not DediSuccess and not SharedSuccess):
         print("[INVALID] Server name\n")
-
-
+     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SSH connection automation for shared, VPS, and dedicated servers")
     parser.add_argument("server")
     parser.add_argument('port', nargs='?', default='22')
-    parser.add_argument("-n", "--node", help="Connect to the VPS node housing the container", action="store_true", dest='gotoNode', default=False)
+    parser.add_argument("-n", "--node", help="Connect to the node housing the VPS container", action="store_true", dest='gotoNode', default=False)
     parser.add_argument("-k", "--keyless", help="Connect to a dedicated server without generating a new root key", action="store_true", dest='noKey', default=False)
     parser.add_argument("-b", "--bounce", help="Run a ping test, and then initate a connection once the server starts responding", action="store_true", dest='bounce', default=False)
-    parser.add_argument("-j", "--jumpstation", help="Backup method to connect to a VPS, node, or shared server through jumpstation, should a direct method fail", action="store_true", dest='jumpstation', default=False)
+    parser.add_argument("-j", "--jumpstation", help="Backup method to connect to a VPS, node, or shared server through jumpstation, should a direct connection fail", action="store_true", dest='jumpstation', default=False)
     args = parser.parse_args()
     main(args)
+    
